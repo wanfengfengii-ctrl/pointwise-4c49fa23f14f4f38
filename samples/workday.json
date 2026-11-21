@@ -1,0 +1,35 @@
+{
+  "old": {
+    "recipe": "耐压复测",
+    "codes": ["检", "补", "复"],
+    "steps": ["INTERNAL-00", "INTERNAL-01", "INTERNAL-02", "INTERNAL-03", "INTERNAL-04", "INTERNAL-05", "INTERNAL-06", "INTERNAL-07"],
+    "start": "INTERNAL-00",
+    "accepting": ["INTERNAL-07"],
+    "edges": [
+      {"source": "INTERNAL-00", "target": "INTERNAL-01", "code": null, "note": "台架私有备注-主路径"},
+      {"source": "INTERNAL-00", "target": "INTERNAL-02", "code": null},
+      {"source": "INTERNAL-01", "target": "INTERNAL-06", "code": "检"},
+      {"source": "INTERNAL-01", "target": "INTERNAL-03", "code": "复"},
+      {"source": "INTERNAL-03", "target": "INTERNAL-04", "code": "检"},
+      {"source": "INTERNAL-02", "target": "INTERNAL-05", "code": "补"},
+      {"source": "INTERNAL-05", "target": "INTERNAL-06", "code": "检"},
+      {"source": "INTERNAL-06", "target": "INTERNAL-07", "code": null}
+    ]
+  },
+  "new": {
+    "recipe": "耐压复测",
+    "codes": ["补", "复", "检"],
+    "steps": ["NEW-START", "NEW-DONE"],
+    "start": "NEW-START",
+    "accepting": ["NEW-DONE"],
+    "edges": [
+      {"source": "NEW-START", "target": "NEW-START", "code": "复"},
+      {"source": "NEW-START", "target": "NEW-DONE", "code": "检"}
+    ]
+  },
+  "trials": [
+    {"crew": "日班甲组", "actions": ["检"]},
+    {"crew": "日班乙组", "actions": ["补", "检"]},
+    {"crew": "日班丙组", "actions": ["复"]}
+  ]
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "case": "repeated-code",
+    "trial_key": "TX-201",
+    "spec": {
+      "recipe": "双次复检", "codes": ["检"], "steps": ["s", "m", "f"], "start": "s", "accepting": ["f"],
+      "edges": [{"source": "s", "target": "m", "code": "检"}, {"source": "m", "target": "f", "code": "检"}]
+    },
+    "controller": {"origin": "控制器片段-201", "actions": ["检"]},
+    "crew": {"origin": "班组原页-201", "actions": ["检", "检"]},
+    "expected": {"shortest_length": 2, "confirmed": []}
+  },
+  {
+    "case": "shared-step",
+    "trial_key": "TX-202",
+    "spec": {
+      "recipe": "单次检验", "codes": ["检"], "steps": ["s", "f"], "start": "s", "accepting": ["f"],
+      "edges": [{"source": "s", "target": "f", "code": "检"}]
+    },
+    "controller": {"origin": "控制器片段-202", "actions": ["检"]},
+    "crew": {"origin": "班组原页-202", "actions": ["检"]},
+    "expected": {"shortest_length": 1, "confirmed": [[1, 1]]}
+  },
+  {
+    "case": "tied-completions",
+    "trial_key": "TX-203",
+    "spec": {
+      "recipe": "检后分道", "codes": ["检", "补"], "steps": ["s", "m", "f"], "start": "s", "accepting": ["f"],
+      "edges": [{"source": "s", "target": "m", "code": "检"}, {"source": "m", "target": "f", "code": "补"}, {"source": "m", "target": "f", "code": "检"}]
+    },
+    "controller": {"origin": "控制器片段-203", "actions": ["检"]},
+    "crew": {"origin": "班组原页-203", "actions": ["检"]},
+    "expected": {"shortest_length": 2, "confirmed": []}
+  },
+  {
+    "case": "separate-branches",
+    "trial_key": "TX-204",
+    "spec": {
+      "recipe": "分道复验", "codes": ["复", "补", "检"], "steps": ["s", "r", "p", "d", "f"], "start": "s", "accepting": ["f"],
+      "edges": [
+        {"source": "s", "target": "r", "code": "复"}, {"source": "r", "target": "f", "code": "检"},
+        {"source": "s", "target": "p", "code": "补"}, {"source": "p", "target": "f", "code": "检"},
+        {"source": "s", "target": "d", "code": null}, {"source": "d", "target": "d", "code": "复"},
+        {"source": "d", "target": "d", "code": "补"}, {"source": "d", "target": "d", "code": "检"}
+      ]
+    },
+    "controller": {"origin": "控制器片段-204", "actions": ["复"]},
+    "crew": {"origin": "班组原页-204", "actions": ["补", "检"]},
+    "expected": {"shortest_length": null, "confirmed": []}
+  },
+  {
+    "case": "empty-completion",
+    "trial_key": "TX-205",
+    "spec": {
+      "recipe": "免动作完结", "codes": [], "steps": ["s", "h", "f"], "start": "s", "accepting": ["f"],
+      "edges": [{"source": "s", "target": "h", "code": null}, {"source": "h", "target": "s", "code": null}, {"source": "h", "target": "f", "code": null}]
+    },
+    "controller": {"origin": "控制器片段-205", "actions": []},
+    "crew": {"origin": "班组原页-205", "actions": []},
+    "expected": {"shortest_length": 0, "confirmed": []}
+  }
+]
