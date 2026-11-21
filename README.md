@@ -12,7 +12,7 @@ python3 -B -m unittest discover -s tests -t .
 python3 -B -m reports.workbench demo
 ```
 
-第一条是控制台提供的完整核验入口。第二条直接运行同一原套件。演示读取 `samples/workday.json`，在独立临时目录登记旧版、核对班单、登记勘误、冻结两版、关闭源库、收件签报并重开领取。旧版独有记录为 `['补', '检']`，新版独有记录为 `['复', '检']`。演示输出实际核对结论、实收父件、签报和次班领取结果。
+第一条是控制台提供的完整核验入口。第二条直接运行同一原套件。演示读取 `samples/workday.json`，在独立临时目录登记旧版、核对班单、登记勘误、冻结两版、关闭源库、收件签报并重开领取。旧版独有记录为 `['补', '检']`，新版独有记录为 `['复', '检']`。演示还登记 `samples/reconciliation.json` 首例并办理双源核对，输出签存结论，再重开源库按号领取。演示输出实际核对结论、实收父件、签报和次班领取结果。
 
 ## 工作台
 
@@ -42,6 +42,8 @@ python3 -B -m reports.workbench demo
 | `recipes.repository.get_current_revision(db, recipe)` | 返回工艺的当前修订快照 |
 | `records.intake.check_record(db, revision_id, actions, crew)` | 返回包含 `trace_id`、`revision_id`、`actions`、`crew`、`supported` 的 `TrialTrace` |
 | `records.traceback.get_trace(db, trace_id)` | 返回原入档记录 |
+| `records.intake.reconcile_trial(db, trial_key, revision_id, controller, crew)` | 双源核对并签存，返回含 `reconciliation_id`、`trial_key`、`revision_id`、`controller`、`crew`、`actions`、`positions`、`confirmed` 的普通字典 |
+| `records.traceback.get_reconciliation(db, reconciliation_id)` | 按号领取双源核对签存；未知号抛 `LookupError`，非法编号抛 `ValueError` |
 | `issue.freeze.freeze(db, revision_id)` | 返回 `FrozenEvidence`，含 `issue_id`、`revision_id`、`digest`、公开判定和固定 `wire` 字节 |
 | `issue.archive.get_issue(db, issue_id)` | 按号返回原件 |
 | `compare.admission.receive(db, issue_id, wire)` | 验收并返回中心实收号 |
@@ -59,6 +61,12 @@ V1 固定件为 UTF-8 JSON，使用按键排序、无额外空白的紧凑编码
 
 中心用两件各自的续接与完结资格判断同一完整记录，按动作数返回每方向最短见证。同长时逐项按 Unicode 码点序比较动作码。可继续但未完结的路径不会贡献支持。循环通过可达的联合候选状态判断，JSON `[]` 表示空记录见证，`null` 表示该方向无独有记录。中心一次提交差异、两份有序父件快照和本报告首执。缺件、非法请求及提交失败不会新增报告或回执。更正和重新初始化不会重算旧报告。
 
+## 双源漏记核对
+
+`reconcile_trial` 把控制器片段与班组原页嵌入同一条修订路径的公开动作序列。每单绑定试验标识、确切修订号、双方精确出处和原序动作；动作码沿用本修订目录校验，原据 `actions` 统一以列表返回。合法还原是从起点到完结点的一条完整路径，隐藏边不产生公开动作也不占位；两份原据各自按原序成为还原的子序列，同源位置严格递增，异源原位可共用同一公开动作，还原也可含双方都漏记的动作。
+
+按公开动作个数取最短，签存一条最短还原及一份代表性合法对照（`positions` 的两份还原位置列表，与原据原位都从 1 起算）。确认同拍覆盖所有最短还原及其全部合法对照：只要存在一份等长完结或对照让两笔落在不同位置，该双源原位对就不签为确认；`confirmed` 按 `[控制器原位, 班组原位]` 升序。可空完结返回 `actions=[]`、空位置和空确认；无共同完结仍留存双方原据，`actions` 与 `positions` 为 `None`、`confirmed` 为空。提交失败不新增且解除后可重试，工艺更正及重新初始化后按原号领取原签存。样例与期望见 `samples/reconciliation.json`。
+
 ## 原回归
 
-`tests/test_recipes.py` 和 `tests/test_records.py` 核对勘误拒绝、指定旧修订、原序及出处。`tests/test_handoff.py` 核对原件、隐私、完结语义、损坏传输和重送。`tests/test_comparison.py` 核对停源双向结果、交换父件、同长择一、晚出现的差异、等价循环和空见证。`tests/test_reporting.py` 使用 SQLite 延迟外键约束核对提交失败的实际回滚和重试，并验证历史首执。`tests/test_workday.py` 和 `tests/test_initialization.py` 核对全日剧本、重开领取和已有业务数据上的重复初始化。
+`tests/test_recipes.py` 和 `tests/test_records.py` 核对勘误拒绝、指定旧修订、原序及出处。`tests/test_handoff.py` 核对原件、隐私、完结语义、损坏传输和重送。`tests/test_comparison.py` 核对停源双向结果、交换父件、同长择一、晚出现的差异、等价循环和空见证。`tests/test_reporting.py` 使用 SQLite 延迟外键约束核对提交失败的实际回滚和重试，并验证历史首执。`tests/test_workday.py` 和 `tests/test_initialization.py` 核对全日剧本、重开领取和已有业务数据上的重复初始化。`tests/test_reconciliation.py` 核对双源最短还原、代表性原位对照、确认同拍的全域判定、无共同完结留档、空动作完结、非法输入、失败回滚重试以及重开按号领取。

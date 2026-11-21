@@ -15,9 +15,10 @@ from issue.evidence import FrozenEvidence
 from issue.freeze import freeze
 from recipes.register import register
 from recipes.repository import initialize_recipe_store
-from records.intake import check_record
+from records.intake import check_record, reconcile_trial
 from records.ledger import initialize_trace_store
-from records.traceback import get_trace
+from records.reconcile_ledger import initialize_reconciliation_store
+from records.traceback import get_reconciliation, get_trace
 from reports.export import report_to_data
 from reports.lookup import get_report
 from reports.publish import initialize_report_store
@@ -26,6 +27,7 @@ from reports.publish import initialize_report_store
 SOURCE = 'source.sqlite3'
 CENTER = 'center.sqlite3'
 SAMPLE = Path(__file__).resolve().parents[1] / 'samples' / 'workday.json'
+RECONCILE_SAMPLE = Path(__file__).resolve().parents[1] / 'samples' / 'reconciliation.json'
 
 
 @contextmanager
@@ -45,6 +47,7 @@ def initialize_workspace(directory: str | Path) -> None:
         with source:
             initialize_recipe_store(source)
             initialize_trace_store(source)
+            initialize_reconciliation_store(source)
             initialize_issue_store(source)
     with open_database(root / CENTER, create=True) as center:
         center.execute('BEGIN IMMEDIATE')
@@ -55,6 +58,27 @@ def initialize_workspace(directory: str | Path) -> None:
 
 def load_sample() -> dict:
     return json.loads(SAMPLE.read_text(encoding='utf-8'))
+
+
+def load_reconciliation_sample() -> list:
+    return json.loads(RECONCILE_SAMPLE.read_text(encoding='utf-8'))
+
+
+def run_reconciliation(directory: str | Path) -> dict:
+    root = Path(directory)
+    case = load_reconciliation_sample()[0]
+    with open_database(root / SOURCE) as source:
+        revision_id = register(source, **case['spec'])
+        signed = reconcile_trial(
+            source,
+            case['trial_key'],
+            revision_id,
+            case['controller'],
+            case['crew'],
+        )
+    with open_database(root / SOURCE) as source:
+        retrieved = get_reconciliation(source, signed['reconciliation_id'])
+    return {'expected': case['expected'], 'signed': signed, 'retrieved': retrieved}
 
 
 def run_workday(directory: str | Path) -> dict:
@@ -75,11 +99,13 @@ def run_workday(directory: str | Path) -> dict:
         delivered = get_report(center, signed.report_id)
     if delivered is None:
         raise LookupError(f'cannot retrieve signed report {signed.report_id}')
+    reconciliation = run_reconciliation(root)
     return {
         'revisions': [old_id, new_id],
         'trials': [asdict(trial) for trial in trials],
         'signed': report_to_data(signed),
         'delivered': report_to_data(delivered),
+        'reconciliation': reconciliation,
     }
 
 

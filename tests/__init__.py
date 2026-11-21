@@ -8,6 +8,7 @@ from issue.freeze import freeze
 from recipes.register import register
 from recipes.repository import initialize_recipe_store
 from records.ledger import initialize_trace_store
+from records.reconcile_ledger import initialize_reconciliation_store
 from reports.publish import initialize_report_store
 from reports.workbench import load_sample
 
@@ -19,6 +20,7 @@ def stores():
         center.execute('PRAGMA foreign_keys = ON')
         initialize_recipe_store(source)
         initialize_trace_store(source)
+        initialize_reconciliation_store(source)
         initialize_issue_store(source)
         initialize_inbox(center)
         initialize_report_store(center)
